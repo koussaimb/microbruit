@@ -1,4 +1,5 @@
 const createRNNWasmModule = require('./rnnoise.js').default;
+import processorURL from './processor.js';
 
 let audioContext = new AudioContext();
 let lowpassFilter;
@@ -21,23 +22,27 @@ let chunks = [];
 async function handleStartButtonClick() {
   startButton.disabled = true;
 
-  await audioContext.audioWorklet.addModule('processor.js');
-  const rnnoiseProcessor = new AudioWorkletNode(audioContext, 'rnnoise-processor');
+  try {
+    await audioContext.audioWorklet.addModule(processorURL);
+    const rnnoiseProcessor = new AudioWorkletNode(audioContext, 'rnnoise-processor');
 
-  const remoteStream = remoteAudio.srcObject;
-  const remoteSource = audioContext.createMediaStreamSource(remoteStream);
-  const remoteDestination = audioContext.createMediaStreamDestination();
-  remoteSource.connect(rnnoiseProcessor);
-  rnnoiseProcessor.connect(remoteDestination);
+    const remoteStream = remoteAudio.srcObject;
+    const remoteSource = audioContext.createMediaStreamSource(remoteStream);
+    const remoteDestination = audioContext.createMediaStreamDestination();
+    remoteSource.connect(rnnoiseProcessor);
+    rnnoiseProcessor.connect(remoteDestination);
 
-  const filteredStream = new MediaStream([remoteDestination.stream.getAudioTracks()[0]]);
-  remoteAudio.srcObject = filteredStream;
+    const filteredStream = new MediaStream([remoteDestination.stream.getAudioTracks()[0]]);
+    remoteAudio.srcObject = filteredStream;
 
-  // Configurez MediaRecorder pour enregistrer le flux filtré
-  mediaRecorder = new MediaRecorder(filteredStream);
-  mediaRecorder.ondataavailable = handleDataAvailable;
-  mediaRecorder.onstop = handleStop;
-  recordButton.disabled = false;
+    // Configurez MediaRecorder pour enregistrer le flux filtré
+    mediaRecorder = new MediaRecorder(filteredStream);
+    mediaRecorder.ondataavailable = handleDataAvailable;
+    mediaRecorder.onstop = handleStop;
+    recordButton.disabled = false;
+  } catch (error) {
+    console.error('Erreur lors de l\'ajout du module audioWorklet:', error);
+  }
 }
 
 
