@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Communication audio en temps réel avec enregistrement</title>
+</head>
+<body>
+  <h1>Communication audio en temps réel avec enregistrement</h1>
+  <button id="start">Démarrer</button>
+  <button id="record" disabled>Enregistrer</button>
+  <button id="stopRecord" disabled>Arrêter l'enregistrement</button>
+  <audio id="remoteAudio" autoplay playsinline></audio>
+  <h2>Enregistrement</h2>
+
+  
+  <audio id="recordedAudio" controls preload="auto"></audio>
+
+  <button id="download" disabled>Télécharger</button>
+    <a id="downloadLink" style="display:none"></a>
+
+
+  <!-- <script src="app.js"></script> -->
+  <script src="rnnoise.js"></script>
+  <script src="dist/bundle.js"></script>
+</body>
+</html>

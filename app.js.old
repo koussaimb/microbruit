@@ -1,0 +1,171 @@
+let audioContext;
+let lowpassFilter;
+
+
+
+const startButton = document.getElementById('start');
+const recordButton = document.getElementById('record');
+const stopRecordButton = document.getElementById('stopRecord');
+const remoteAudio = document.getElementById('remoteAudio');
+const recordedAudio = document.getElementById('recordedAudio');
+
+const downloadButton = document.getElementById('download');
+const downloadLink = document.getElementById('downloadLink');
+
+
+let localConnection;
+let remoteConnection;
+let localStream;
+let mediaRecorder;
+let chunks = [];
+
+startButton.addEventListener('click', async () => {
+    startButton.disabled = true;
+
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    lowpassFilter = audioContext.createBiquadFilter();
+    lowpassFilter.type = 'lowpass';
+    lowpassFilter.frequency.value = 1000;
+
+    if (remoteAudio.srcObject) {
+        const remoteStream = remoteAudio.srcObject;
+        const remoteSource = audioContext.createMediaStreamSource(remoteStream);
+        const remoteDestination = audioContext.createMediaStreamDestination();
+        remoteSource.connect(lowpassFilter);
+        lowpassFilter.connect(remoteDestination);
+
+        const filteredStream = new MediaStream([remoteDestination.stream.getAudioTracks()[0]]);
+        remoteAudio.srcObject = filteredStream;
+
+        // Configurez MediaRecorder pour enregistrer le flux filtré
+        mediaRecorder = new MediaRecorder(filteredStream);
+        mediaRecorder.ondataavailable = handleDataAvailable;
+        mediaRecorder.onstop = handleStop;
+    } else {
+        console.error('Le flux audio distant n\'est pas défini.');
+    }
+
+    // Configure WebRTC
+    localConnection = new RTCPeerConnection();
+    remoteConnection = new RTCPeerConnection();
+
+    localConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            remoteConnection.addIceCandidate(event.candidate);
+        }
+    };
+
+    remoteConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            localConnection.addIceCandidate(event.candidate);
+        }
+    };
+
+    remoteConnection.ontrack = (event) => {
+        remoteAudio.srcObject = event.streams[0];
+        recordButton.disabled = false;
+    };
+
+    localStream = remoteAudio.srcObject;
+    localStream.getTracks().forEach(track => localConnection.addTrack(track, localStream));
+
+    const offer = await localConnection.createOffer();
+    await localConnection.setLocalDescription(offer);
+    await remoteConnection.setRemoteDescription(localConnection.localDescription);
+
+    const answer = await remoteConnection.createAnswer();
+    await remoteConnection.setLocalDescription(answer);
+    await localConnection.setRemoteDescription(remoteConnection.localDescription);
+});
+
+
+async function initMicrophone() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        remoteAudio.srcObject = stream;
+        console.log('Microphone activé:', stream);
+    } catch (err) {
+        console.error('Erreur lors de l\'activation du microphone:', err);
+    }
+}
+initMicrophone();
+function handleDataAvailable(event) {
+    if (event.data.size > 0) {
+        chunks.push(event.data);
+    }
+}
+
+function handleStop() {
+    const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' });
+    chunks = [];
+    const audioURL = URL.createObjectURL(blob);
+    recordedAudio.src = audioURL;
+  
+    // Mise à jour du lien de téléchargement
+    downloadLink.href = audioURL;
+    downloadLink.download = 'enregistrement_audio.webm';
+    downloadButton.disabled = false;
+  
+    console.log('Enregistrement terminé et audio prêt à être lu.');
+  }
+
+// recordButton.addEventListener('click', () => {
+//     mediaRecorder = new MediaRecorder(remoteAudio.srcObject);
+//     mediaRecorder.start();
+//     console.log('Enregistrement en cours...');
+
+//     recordButton.disabled = true;
+//     stopRecordButton.disabled = false;
+
+//     mediaRecorder.ondataavailable = (e) => {
+//         chunks.push(e.data);
+//     };
+
+
+//     mediaRecorder.onstop = () => {
+//         const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' });
+//         chunks = [];
+//         const audioURL = URL.createObjectURL(blob);
+//         recordedAudio.src = audioURL;
+
+//         // Mise à jour du lien de téléchargement
+//         downloadLink.href = audioURL;
+//         downloadLink.download = 'enregistrement_audio.webm';
+//         downloadButton.disabled = false;
+
+//         console.log('Enregistrement terminé et audio prêt à être lu.');
+//     };
+
+// });
+
+// stopRecordButton.addEventListener('click', () => {
+//     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+//         mediaRecorder.stop();
+//         recordButton.disabled = false;
+//         stopRecordButton.disabled = true;
+//     }
+// });
+
+recordButton.addEventListener('click', () => {
+    if (mediaRecorder) {
+      mediaRecorder.start();
+      console.log('Enregistrement en cours...');
+  
+      recordButton.disabled = true;
+      stopRecordButton.disabled = false;
+    } else {
+      console.error('MediaRecorder n\'est pas défini.');
+    }
+  });
+  
+  stopRecordButton.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      recordButton.disabled = false;
+      stopRecordButton.disabled = true;
+    }
+  });
+  
+downloadButton.addEventListener('click', () => {
+    downloadLink.click();
+});
