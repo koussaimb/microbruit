@@ -2,7 +2,7 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
-  mode: 'development',
+  mode: 'production',
   entry: './app.js',
   output: {
     filename: 'bundle.js',
@@ -43,5 +43,8 @@ module.exports = {
     },
     compress: true,
     port: 8081,
+  },
+  optimization: {
+    minimize: false,
   },
 };
