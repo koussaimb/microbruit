@@ -14,7 +14,7 @@ registerProcessor('rnnoise-processor', class extends AudioWorkletProcessor {
       const output = outputs[0];
       const inputChannel = input[0];
       const outputChannel = output[0];
-  
+      console.log('rnnoise est en cours du runnnnnnnn');
       if (this._rnnoiseModule) {
         this._rnnoiseModule.process(inputChannel, outputChannel);
       } else {
